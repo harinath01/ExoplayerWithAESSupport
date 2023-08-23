@@ -32,8 +32,25 @@ class MainActivity : AppCompatActivity() {
                 exoPlayer.setAudioAttributes(AudioAttributes.DEFAULT, true)
                 findViewById<PlayerView>(R.id.player_view).player = exoPlayer
             }
-        exoPlayer.addMediaItem(getMediaItem(AES_ENCRYPTED_VIDEO_URL))
+        exoPlayer.setMediaSource(getMediaSourceFactory().createMediaSource(getMediaItem(AES_ENCRYPTED_VIDEO_URL)))
         exoPlayer.prepare()
+    }
+
+    private fun getMediaSourceFactory(): MediaSource.Factory {
+        val okHttpClient = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                var request = chain.request()
+                if (request.url.toString().contains("aes_key")) {
+                    request = request.newBuilder()
+                        .url("${request.url}?access_token=$access_token")
+                        .build()
+                }
+                chain.proceed(request)
+            }
+            .build()
+        val httpDataSourceFactory: OkHttpDataSource.Factory = OkHttpDataSource.Factory(okHttpClient)
+        return DefaultMediaSourceFactory(this)
+            .setDataSourceFactory(httpDataSourceFactory)
     }
 
     private fun getMediaItem(sourseUrl: String): MediaItem {
